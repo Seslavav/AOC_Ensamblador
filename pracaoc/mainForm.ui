@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>QMainForm</class>
+ <widget class="QWidget" name="QMainForm">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>803</width>
+    <height>606</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Procesamiento de imágenes</string>
+  </property>
+  <widget class="QFrame" name="frameOrig">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>40</y>
+     <width>320</width>
+     <height>240</height>
+    </rect>
+   </property>
+   <property name="frameShape">
+    <enum>QFrame::StyledPanel</enum>
+   </property>
+   <property name="frameShadow">
+    <enum>QFrame::Raised</enum>
+   </property>
+  </widget>
+  <widget class="QFrame" name="frameDest">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>340</y>
+     <width>320</width>
+     <height>240</height>
+    </rect>
+   </property>
+   <property name="frameShape">
+    <enum>QFrame::StyledPanel</enum>
+   </property>
+   <property name="frameShadow">
+    <enum>QFrame::Raised</enum>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonCargar">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>60</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Cargar</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonSalir">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>500</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Salir</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="labelOrig">
+   <property name="geometry">
+    <rect>
+     <x>140</x>
+     <y>20</y>
+     <width>101</width>
+     <height>18</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Imagen Origen</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="labelDest">
+   <property name="geometry">
+    <rect>
+     <x>140</x>
+     <y>320</y>
+     <width>111</width>
+     <height>18</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Imagen Destino</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonCopiarO">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>140</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Copiar origen</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonCopiarD">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>180</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Copiar destino</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonEscalaGrises">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>340</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Escala de Grises</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonContrasteFCuadrada">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>260</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Contraste (cuadrado)</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonFInversa">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>300</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Contraste (inversa)</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonEcualizar">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>460</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Ecualizar</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonFiltroLineal">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>420</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Filtro Lineal</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonBorrar">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>220</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Borrar</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonGuardar">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>100</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Guardar</string>
+   </property>
+  </widget>
+  <widget class="QFrame" name="frameHistoOrig">
+   <property name="geometry">
+    <rect>
+     <x>360</x>
+     <y>100</y>
+     <width>256</width>
+     <height>120</height>
+    </rect>
+   </property>
+   <property name="frameShape">
+    <enum>QFrame::NoFrame</enum>
+   </property>
+   <property name="frameShadow">
+    <enum>QFrame::Raised</enum>
+   </property>
+   <property name="lineWidth">
+    <number>1</number>
+   </property>
+  </widget>
+  <widget class="QFrame" name="frameHistoDest">
+   <property name="geometry">
+    <rect>
+     <x>360</x>
+     <y>400</y>
+     <width>256</width>
+     <height>120</height>
+    </rect>
+   </property>
+   <property name="frameShape">
+    <enum>QFrame::NoFrame</enum>
+   </property>
+   <property name="frameShadow">
+    <enum>QFrame::Raised</enum>
+   </property>
+  </widget>
+  <widget class="QLabel" name="labelHistoOrig">
+   <property name="geometry">
+    <rect>
+     <x>450</x>
+     <y>80</y>
+     <width>81</width>
+     <height>18</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Histograma</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="labelHistoDest">
+   <property name="geometry">
+    <rect>
+     <x>450</x>
+     <y>380</y>
+     <width>81</width>
+     <height>18</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Histograma</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonUmbralizar">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>380</y>
+     <width>151</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Umbralizar</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
