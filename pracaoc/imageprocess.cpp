@@ -71,9 +71,19 @@ void imageprocess::borrar(uchar * imgD)
     asm volatile(
         ";"
 
+        "mov %0, %%rsi ;"
+        "mov $320*240, %%rcx ;"
+
+        "bborrar: ;"
+
+            "movl $0, (%%rsi) ;"
+
+            "inc %%rsi ;"
+            "loop bborrar ;"
+
         :
         : "m" (imgD)
-        : "memory"
+        : "%rcx", "%rsi", "memory"
 
     );
 
@@ -96,11 +106,27 @@ void imageprocess::cambiarContrasteFCuadrada(uchar * imgO, uchar * imgD)
 
 #ifdef WITHOUT_SSE
     asm volatile(
-        ";"
+
+        "mov %0, %%rsi ;"
+        "mov %1, %%rdi ;"
+        "mov $320*240, %%rcx ;"
+        "bcontrastecuadrado: ;"
+
+            "mov (%%rsi), %%al;"
+            "mul %%al;"
+
+            "mov $255, %%bl;"
+            "div %%bl;"
+
+            "mov %%al, (%%rdi);"
+
+            "inc %%rsi ;"
+            "inc %%rdi ;"
+            "loop bcontrastecuadrado ;"
 		
         :
         : "m" (imgO),	"m" (imgD)
-        : "memory"
+        : "%rbx", "%rax", "%rcx", "%rsi", "%rdi", "memory"
     );
 #else
     asm volatile(
@@ -120,11 +146,25 @@ void imageprocess::cambiarContrasteFInversa(uchar * imgO, uchar * imgD)
 
 #ifdef WITHOUT_SSE
     asm volatile(
-        ";"
+        "mov %0, %%rsi ;"
+        "mov %1, %%rdi ;"
+        "mov $320*240, %%rcx ;"
+        "bcontrasteinversa: ;"
+
+            "mov (%%rsi), %%al;"
+
+            "mov $255, %%bl;"
+            "sub %%al, %%bl;"
+
+            "mov %%bl, (%%rdi);"
+
+            "inc %%rsi ;"
+            "inc %%rdi ;"
+            "loop bcontrasteinversa ;"
 		
         :
         : "m" (imgO),	"m" (imgD)
-        : "memory"
+        : "%rbx", "%rax", "%rcx", "%rsi", "%rdi", "memory"
     );
 
 #else
@@ -145,11 +185,41 @@ void imageprocess::cambiarEscalaGrises(uchar * imgO, uchar * imgD, uchar minO, u
 
 #ifdef WITHOUT_SSE
     asm volatile(
-        ";"
+        "mov %0, %%rsi ;"
+        "mov %1, %%rdi ;"
+        "mov %2, %%r8b ;"
+        "mov %3, %%bl ;"
+        "mov %4, %%dl ;"
+        "mov %5, %%r9b ;"
+
+        "mov %%bl, %%r10b;"
+        "sub %%r8b, %%r10b;"          // rangoO = maxO - minO
+
+        "mov %%r9b, %%r11b;"
+        "sub %%dl, %%r11b;"         // rangoD = maxD - minD
+
+        "mov $320*240, %%rcx ;"
+        "bescalagrises: ;"
+
+            "mov (%%rsi), %%al;"
+
+            "sub %%r8b, %%al;"     // g - minO
+
+            "mul %%r11b;"            // (g-minO) * rangoD
+
+            "div %%r10b;"            // ((g-minO)*rangoD) / rangoO
+
+            "add %%dl, %%al;"     // (((g-minO)*rangoD)/rangoO) + minD
+
+            "mov %%al, (%%rdi);"
+
+            "inc %%rsi ;"
+            "inc %%rdi ;"
+            "loop bescalagrises ;"
 		
         :
         : "m" (imgO), "m" (imgD), "m" (minO), "m" (maxO), "m" (minD), "m" (maxD)
-        : "memory"
+        : "%rax", "%rbx", "%rcx", "%rdx", "%r8", "%r9", "%r10", "%r11", "%r12", "%rsi", "%rdi", "memory"
     );
 #else
     asm volatile(
