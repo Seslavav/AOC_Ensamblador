@@ -110,6 +110,7 @@ void imageprocess::cambiarContrasteFCuadrada(uchar * imgO, uchar * imgD)
         "mov %0, %%rsi ;"
         "mov %1, %%rdi ;"
         "mov $320*240, %%rcx ;"
+
         "bcontrastecuadrado: ;"
 
             "mov (%%rsi), %%al;"
@@ -238,11 +239,38 @@ void imageprocess::cambiarEscalaGrises(uchar * imgO, uchar * imgD, uchar minO, u
 void imageprocess::umbralizar(uchar * imgO, uchar * imgD, uchar uMax, uchar uMin)
 {
     asm volatile(
-        ";"
+        "mov %0, %%rsi ;"
+        "mov %1, %%rdi ;"
+        "mov %2, %%r8b;"        // uMax
+        "mov %3, %%r9b;"        // uMin
+
+        "mov $320*240, %%rcx ;"
+        "bumbralizar: ;"
+
+            "mov %%r8b, %%al;"
+            "cmp %%al, (%%rsi);"
+            "jbe sino1;"
+                "movb $255, (%%rdi);"
+                "jmp fin;"
+
+            "sino1: ;"
+                "mov %%r9b, %%al;"
+                "cmp %%al, (%%rsi);"
+                "jb si2;"
+                    "movb $127, (%%rdi);"
+                    "jmp fin;"
+                "si2: ;"
+                    "movb $0, (%%rdi);"
+
+            "fin: ;"
+            "inc %%rsi ;"
+            "inc %%rdi ;"
+            "loop bumbralizar ;"
+
 
         :
         : "m" (imgO), "m" (imgD), "m" (uMax), "m" (uMin)
-        : "memory"
+        : "%rax", "%rbx", "%rcx", "%r8", "%r9", "%rsi", "%rdi", "memory"
 
     );
 
@@ -254,11 +282,30 @@ void imageprocess::filtroLineal(uchar * imgO, int * kernel, int norm, uchar * im
 {
 	
     asm volatile(
-        ";"
+        "mov %0, %%rsi;"
+        "mov %1, %%r8;"        // kernel
+        "mov %2, %%r9d;"        // norm
+        "mov %3, %%rdi;"
+
+        "mov $240, %%r10;"
+        "mov $320, %%r11;"
+        "bfiltrolineal_general1: "
+
+                "bfiltrolineal_general2: ;"
+
+                // PARTE DEL BUCLE GENERAL 2
+                "dec %%r11b;"
+                "cmp %0, %%r11b;"
+                "jg bfiltrolineal_general2;"
+
+        // PARTE DEL BUCLE GENERAL 1
+        "dec %%r10b;"
+        "cmp %0, %%r10b;"
+        "jg bfiltrolineal_general1;"
 
         :
         : "m" (imgO), "m" (kernel), "m"(norm), "m" (imgD)
-        : "memory"
+        : "%rsi", "%rdi", "%r8", "%r9", "%r10", "%r11", "%rax", "%rbx", "%rcx", "%rdx", "memory"
     );
   
 }
@@ -284,11 +331,26 @@ void imageprocess::ecualizarHistograma(int * histoOrig, uchar * tablaLUT)
 void imageprocess::aplicarTablaLUT(uchar * imgO, uchar * tablaLUT, uchar * imgD)
 {
     asm volatile(
-        ";"
+        "mov %0, %%rsi;"
+        "mov %1, %%r8;"
+        "mov %2, %%rdi;"
+
+        "mov $320*240, %%rcx ;"
+        "baplicartablalut: ;"
+
+                "xor %%rax, %%rax;"
+                "mov (%%rsi), %%al;"
+                "add (%%r8, %%rax), %%al;"
+
+                "mov %%al, (%%rdi);"
+
+                "inc %%rsi ;"
+                "inc %%rdi ;"
+                "loop baplicartablalut;"
 
         :
         : "m" (imgO), "m" (tablaLUT), "m" (imgD)
-        : "memory"
+        : "%r8", "%r9", "%rax", "%rbx", "%rcx", "memory"
     );
 
 }
