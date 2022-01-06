@@ -282,16 +282,85 @@ void imageprocess::filtroLineal(uchar * imgO, int * kernel, int norm, uchar * im
 {
 	
     asm volatile(
-        "mov %0, %%rsi;"
-        "mov %1, %%r8;"        // kernel
-        "mov %2, %%r9d;"        // norm
-        "mov %3, %%rdi;"
+        "mov %0, %%rsi;"                                        //img0 = rsi
+        "mov %1, %%r8;"                                         // kernel
+        "mov %2, %%r9d;"                                        // norm
+        "mov %3, %%rdi;"                                        //imgD = rdi
 
-        "mov $240, %%r10;"
-        "mov $320, %%r11;"
+        "mov $240, %%r10;"                                      // f = 240
+        "mov $320, %%r11;"                                      // c = 320
         "bfiltrolineal_general1: "
 
                 "bfiltrolineal_general2: ;"
+                    "mov %%r8, %%r12;"                          // dirKernel = kernel
+                    "xor %%r13, %%r13;"                           // acum = 0
+
+                    // BUCLE ESPECIFICO 1
+                    "mov $-1, %%r14b;"                          // kf = -1
+                    "bfiltrolineal_especifico_1: ;"
+
+                        //BUCLE ESPECIFICO 2
+                        "mov $-1, %%r15b;"                      // kc = -1
+                        "bfiltrolineal_especifico_2: ;"
+
+                            //SENTENCIAS DE BUCLE ESPECIFICO 2
+                            "mov %%r10, %%rax;"
+                            "add %%r14, %%rax;"                 // fp = f+kf
+
+                            "mov %%r11, %%rbx;"
+                            "add %%r15, %%rbx;"                 // cp = c+kc
+
+                            // COMPARACION
+                            "cmp $0, %%rbx;"
+                            "jl comparacion_especifica_fin;"
+                            "cmp $320, %%rbx;"
+                            "jge comparacion_especifica_fin;"
+                            "cmp $0, %%rax;"
+                            "jl comparacion_especifica_fin;"
+                            "cmp $240, %%rax;"
+                            "jge comparacion_especifica_fin;"
+
+                                "mov $320, %%rdx;"
+                                "mul %%rdx;"
+                                "add %%rbx, %%rax;"               // offPixel = fp*320 + cp
+                                "add (%%rdi), %%rax;"            // g = dirOrig + offPixel
+                                "mul %%r12;"
+                                "add %%rax, %%r13;"             // acum = acum + g*dirKernel
+
+
+                            "comparacion_especifica_fin: ;"
+                            "add $4, %%r12;"
+
+
+                        "inc %%r15b;"
+                        "cmp %1, %%r15;"
+                        "jbe bfiltrolineal_especifico_2;"
+
+                    "inc %%r14b;"
+                    "cmp %1, %%r14;"
+                    "jbe bfiltrolineal_especifico_1;"
+
+                    // SENTENCIAS ANTES DE OTRO CICLO DEL BUCLE GENERAL 2
+                    "xor %%rax, %%rax;"
+                    "mov %%r13, %%rax;"
+                    "mov %%r9, %%rbx;"
+
+                    "div %%rbx;"
+
+                    "mov %%rax, %%r13;"
+
+                    "cmp $0, %%r13;"
+                    "jg comparacion_fin_1;"
+                    "mov $0, %%r13;"
+                    "comparacion_fin_1: ;"
+                    "cmp $255, %%r13;"
+                    "jb comparacion_fin_2;"
+                    "mov $255, %%r13;"
+                    "comparacion_fin_2: ;"
+
+                    "mov %%r13, (%%rdi);"
+                    "inc %%rdi;"
+
 
                 // PARTE DEL BUCLE GENERAL 2
                 "dec %%r11b;"
@@ -305,7 +374,7 @@ void imageprocess::filtroLineal(uchar * imgO, int * kernel, int norm, uchar * im
 
         :
         : "m" (imgO), "m" (kernel), "m"(norm), "m" (imgD)
-        : "%rsi", "%rdi", "%r8", "%r9", "%r10", "%r11", "%rax", "%rbx", "%rcx", "%rdx", "memory"
+        : "%rsi", "%rdi", "%r8", "%r9", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15", "%rax", "%rbx", "%rcx", "%rdx", "memory"
     );
   
 }
@@ -318,11 +387,46 @@ void imageprocess::ecualizarHistograma(int * histoOrig, uchar * tablaLUT)
     acumHisto = new int[256];
 
     asm volatile(
-        ";"
+        "mov %0, %%rsi;"            //dirHOrirg
+        "mov %2, %%rdi;"            //dirHAcum
+        "xor %%r9, %%r9;"           //acum
+
+        "mov $256, %%rcx;"
+        "becualizar_1: ;"
+                "mov (%%rsi, %%rcx, 4), %%rax;"
+                "add %%rax, %%r9;"
+                "mov %%r9, (%%rsi, %%rcx, 4);"
+        "loop becualizar_1;"
+
+        "mov %1, %%r10;"            //dirLUT
+
+        "mov $256, %%rcx;"
+        "becualizar_2: ;"
+                "mov $320, %%rax;"
+                "mov $240, %%rdx;"
+                "mul %%rdx;"
+                "mov %%rax, %%rdx;" //320*240
+
+                "mov (%%rdi, %%rcx, 4), %%rax;"
+                "mov $256, %%rbx;"
+                "mul %%rbx;"
+
+                "div %%rdx;"        //g = (256*[dirHAcum + n*4])/(320*240);
+
+                "cmp %0, %%al;"
+                "jle secualizar_1;"
+                    "dec %%rax;"
+                "secualizar_1: ;"
+
+                "mov %%rax, (%%r10, %%rcx);"
+
+        "loop becualizar_2;"
+
+
 
         :
         : "m" (histoOrig), "m" (tablaLUT), "m" (acumHisto)
-        : "memory"
+        : "%rsi", "%rdi", "%r8", "%r9", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15", "%rax", "%rbx", "%rcx", "%rdx", "memory"
     );
 
 }
