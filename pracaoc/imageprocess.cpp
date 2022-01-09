@@ -280,103 +280,101 @@ void imageprocess::umbralizar(uchar * imgO, uchar * imgD, uchar uMax, uchar uMin
 
 void imageprocess::filtroLineal(uchar * imgO, int * kernel, int norm, uchar * imgD)
 {
-	
-    asm volatile(
-        "mov %0, %%rsi;"                                        //img0 = rsi
-        "mov %1, %%r8;"                                         // kernel
-        "mov %2, %%r9d;"                                        // norm
-        "mov %3, %%rdi;"                                        //imgD = rdi
+// r10d=(int)f  r11d=(int)c  r12=(*)kernel  rdx=(short)acum  r14d=(int)kf
+// r15d=(int)kc
 
-        "mov $240, %%r10;"                                      // f = 240
-        "mov $320, %%r11;"                                      // c = 320
+// al=rXb=1byte=uchar  ax=rXw=2byte=short  eax=rXd=4byte=int  rax=rX=8byte=*(dir memoria)
+    asm volatile(
+        "mov %0, %%rsi;"                                        /// dirOrig = img0
+        "mov %3, %%rdi;"                                        /// dirDest = imgD
+
+        "mov $0, %%r10;"                                        /// f = 0
         "bfiltrolineal_general1: "
 
+                "mov $0, %%r11;"                                /// c = 0
                 "bfiltrolineal_general2: ;"
-                    "mov %%r8, %%r12;"                          // dirKernel = kernel
-                    "xor %%r13, %%r13;"                           // acum = 0
+                    "mov %1, %%r12;"                            /// dirKernel = kernel
+                    "mov $0, %%rdx;"                            /// acum = 0
 
                     // BUCLE ESPECIFICO 1
-                    "mov $-1, %%r14b;"                          // kf = -1
+                    "mov $-1, %%r14;"                           /// kf = -1
                     "bfiltrolineal_especifico_1: ;"
 
                         //BUCLE ESPECIFICO 2
-                        "mov $-1, %%r15b;"                      // kc = -1
+                        "mov $-1, %%r15;"                       /// kc = -1
                         "bfiltrolineal_especifico_2: ;"
 
-                            //SENTENCIAS DE BUCLE ESPECIFICO 2
-                            "mov %%r10, %%rax;"
-                            "add %%r14, %%rax;"                 // fp = f+kf
+                            "lea (%%r10, %%r14), %%r13;"        /// fp = f + kf
+                            "lea (%%r11, %%r15), %%r8;"         /// cp = c + kc
 
-                            "mov %%r11, %%rbx;"
-                            "add %%r15, %%rbx;"                 // cp = c+kc
+                            "cmp $0, %%r8;"
+                            "jl b_especifico_and;"
+                            "cmp $320, %%r8;"
+                            "jge b_especifico_and;"
+                            "cmp $0, %%r13;"
+                            "jl b_especifico_and;"
+                            "cmp $240, %%r13;"
+                            "jge b_especifico_and;"
 
-                            // COMPARACION
-                            "cmp $0, %%rbx;"
-                            "jl comparacion_especifica_fin;"
-                            "cmp $320, %%rbx;"
-                            "jge comparacion_especifica_fin;"
-                            "cmp $0, %%rax;"
-                            "jl comparacion_especifica_fin;"
-                            "cmp $240, %%rax;"
-                            "jge comparacion_especifica_fin;"
+                                "mov %%r13, %%rax;"             /// rax = fp
+                                "imul $320, %%rax;"             /// rax = fp * 320
+                                "add %%r8, %%rax;"              /// offPixel = fp * 320 + cp
 
-                                "mov $320, %%rdx;"
-                                "mul %%rdx;"
-                                "add %%rbx, %%rax;"               // offPixel = fp*320 + cp
-                                "add (%%rdi), %%rax;"            // g = dirOrig + offPixel
-                                "mul %%r12;"
-                                "add %%rax, %%r13;"             // acum = acum + g*dirKernel
+                                "xor %%rbx, %%rbx;"
+                                "mov (%%rsi, %%rax), %%bl;"     /// g = [offPixel + dirOrig]
 
+                                "mov (%%r12), %%ecx;"           /// rcx = [dirKernel]
+                                "imul %%ecx, %%ebx;"            /// ebx = g * [dirKernel]
+                                "add %%rbx, %%rdx;"             /// acum += g * [dirKernel]
 
-                            "comparacion_especifica_fin: ;"
-                            "add $4, %%r12;"
+                            "b_especifico_and: "
 
+                            "add $4, %%r12;"                    /// dirKernel += 4
 
-                        "inc %%r15b;"
-                        "cmp %1, %%r15;"
-                        "jbe bfiltrolineal_especifico_2;"
+                        "inc %%r15;"
+                        "cmp $1, %%r15;"
+                        "jle bfiltrolineal_especifico_2;"
 
-                    "inc %%r14b;"
-                    "cmp %1, %%r14;"
-                    "jbe bfiltrolineal_especifico_1;"
+                    "inc %%r14;"
+                    "cmp $1, %%r14;"
+                    "jle bfiltrolineal_especifico_1;"
 
                     // SENTENCIAS ANTES DE OTRO CICLO DEL BUCLE GENERAL 2
-                    "xor %%rax, %%rax;"
-                    "mov %%r13, %%rax;"
-                    "mov %%r9, %%rbx;"
 
-                    "div %%rbx;"
+                    "mov %%rdx, %%rax;"                         /// eax = acum
+                    "mov %2, %%r9d;"                            /// r9d = norm
 
-                    "mov %%rax, %%r13;"
+                    "cltd;"
+                    "idiv %%r9d;"                               /// eax = acum / norm
 
-                    "cmp $0, %%r13;"
-                    "jg comparacion_fin_1;"
-                    "mov $0, %%r13;"
-                    "comparacion_fin_1: ;"
-                    "cmp $255, %%r13;"
-                    "jb comparacion_fin_2;"
-                    "mov $255, %%r13;"
-                    "comparacion_fin_2: ;"
+                    "cmp $0, %%eax;"
+                    "jge s_filtro_1;"
+                        "mov $0, %%eax;"
+                    "s_filtro_1: ;"
 
-                    "mov %%r13, (%%rdi);"
+                    "cmp $255, %%eax;"
+                    "jle s_filtro_2;"
+                        "mov $255, %%eax;"
+                    "s_filtro_2: ;"
+
+                    "mov %%al, (%%rdi);"                        /// [dirDest] = acum
                     "inc %%rdi;"
 
-
                 // PARTE DEL BUCLE GENERAL 2
-                "dec %%r11b;"
-                "cmp %0, %%r11b;"
-                "jg bfiltrolineal_general2;"
+                "inc %%r11d;"
+                "cmp $320, %%r11d;"
+                "jl bfiltrolineal_general2;"
 
         // PARTE DEL BUCLE GENERAL 1
-        "dec %%r10b;"
-        "cmp %0, %%r10b;"
-        "jg bfiltrolineal_general1;"
+        "inc %%r10d;"
+        "cmp $240, %%r10d;"
+        "jl bfiltrolineal_general1;"
 
         :
         : "m" (imgO), "m" (kernel), "m"(norm), "m" (imgD)
         : "%rsi", "%rdi", "%r8", "%r9", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15", "%rax", "%rbx", "%rcx", "%rdx", "memory"
     );
-  
+
 }
 
 
@@ -387,40 +385,44 @@ void imageprocess::ecualizarHistograma(int * histoOrig, uchar * tablaLUT)
     acumHisto = new int[256];
 
     asm volatile(
-        "mov %0, %%rsi;"            //dirHOrirg
-        "mov %2, %%rdi;"            //dirHAcum
-        "xor %%r9, %%r9;"           //acum
+        "mov %0, %%rsi;"                            /// dirHOrig
+        "mov %2, %%rdi;"                            /// dirHAcum
 
-        "mov $256, %%rcx;"
+        "mov $0, %%r9;"                             /// acum
+
+        "mov $0, %%rcx;"
         "becualizar_1: ;"
-                "mov (%%rsi, %%rcx, 4), %%rax;"
-                "add %%rax, %%r9;"
-                "mov %%r9, (%%rsi, %%rcx, 4);"
-        "loop becualizar_1;"
+                "mov (%%rsi, %%rcx, 4), %%eax;"     /// eax = [dirHorig + (n*4)]
+                "add %%eax, %%r9d;"                 /// acum += [dirHorig+(n+4)]
 
-        "mov %1, %%r10;"            //dirLUT
+                "mov %%r9d, (%%rdi, %%rcx, 4);"     /// [dirHAcum+(n*4)] = acum
+        "inc %%rcx;"
+        "cmp $256, %%rcx;"
+        "jl becualizar_1;"
 
-        "mov $256, %%rcx;"
+        "mov %1, %%r10;"                            /// dirLut = tablaLut
+
+        "mov $0, %%rcx;"
         "becualizar_2: ;"
-                "mov $320, %%rax;"
-                "mov $240, %%rdx;"
-                "mul %%rdx;"
-                "mov %%rax, %%rdx;" //320*240
+                "mov (%%rdi, %%rcx, 4), %%eax;"     /// eax = [dirHAcum + (n*4)]
+                "mov $256, %%ebx;"                  /// ebx = 256
+                "mul %%ebx;"                        /// eax = [dirHAcum + (n*4)] * 256
 
-                "mov (%%rdi, %%rcx, 4), %%rax;"
-                "mov $256, %%rbx;"
-                "mul %%rbx;"
+                "mov $320*240, %%ebx;"              /// ebx = 320*240
 
-                "div %%rdx;"        //g = (256*[dirHAcum + n*4])/(320*240);
+                "xor %%rdx, %%rdx;"
+                "div %%ebx;"                        /// eax = ([dirHAcum + (n*4)] * 256) / 320*240
 
-                "cmp %0, %%al;"
+                "cmp $0, %%eax;"
                 "jle secualizar_1;"
-                    "dec %%rax;"
+                "dec %%eax;"
                 "secualizar_1: ;"
 
-                "mov %%rax, (%%r10, %%rcx);"
+                "mov %%al, (%%r10, %%rcx);"         /// [dirLut + n] = g
 
-        "loop becualizar_2;"
+        "inc %%rcx;"
+        "cmp $256, %%rcx;"
+        "jl becualizar_2;"
 
 
 
@@ -435,22 +437,23 @@ void imageprocess::ecualizarHistograma(int * histoOrig, uchar * tablaLUT)
 void imageprocess::aplicarTablaLUT(uchar * imgO, uchar * tablaLUT, uchar * imgD)
 {
     asm volatile(
-        "mov %0, %%rsi;"
-        "mov %1, %%r8;"
-        "mov %2, %%rdi;"
+        "mov %0, %%rsi;"                        /// dirOrig
+        "mov %1, %%r8;"                         /// dirLut
+        "mov %2, %%rdi;"                        /// dirDest
 
         "mov $320*240, %%rcx ;"
         "baplicartablalut: ;"
 
                 "xor %%rax, %%rax;"
-                "mov (%%rsi), %%al;"
-                "add (%%r8, %%rax), %%al;"
+                "mov (%%rsi), %%al;"            /// al = [dirOrig]
+                "mov (%%r8, %%rax), %%al;"      /// al = [dirLut + dirOrig]
 
-                "mov %%al, (%%rdi);"
+                "mov %%al, (%%rdi);"            /// [rdi] = gDest
 
                 "inc %%rsi ;"
                 "inc %%rdi ;"
                 "loop baplicartablalut;"
+
 
         :
         : "m" (imgO), "m" (tablaLUT), "m" (imgD)
