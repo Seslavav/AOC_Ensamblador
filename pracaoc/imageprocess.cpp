@@ -111,7 +111,22 @@ void imageprocess::cambiarContrasteFCuadrada(uchar * imgO, uchar * imgD)
         "mov %1, %%rdi ;"
         "mov $320*240, %%rcx ;"
 
+        "mov $3200, %%r8 ;"
+        "mov $73600, %%r9 ;"
         "bcontrastecuadrado: ;"
+
+            "cmp $0, %%r8 ;"
+            "jle s_contrasteCuadrado_siguiente;"
+            "movb $0, (%%rdi) ;"
+            "jmp s_contrasteCuadrado_fin ;"
+
+            "s_contrasteCuadrado_siguiente: "
+            "cmp $0, %%r9 ;"
+            "jg s_contrasteCuadrado_cambiar;"
+            "movb $0, (%%rdi) ;"
+            "jmp s_contrasteCuadrado_fin ;"
+
+            "s_contrasteCuadrado_cambiar: "
 
             "mov (%%rsi), %%al;"
             "mul %%al;"
@@ -121,13 +136,18 @@ void imageprocess::cambiarContrasteFCuadrada(uchar * imgO, uchar * imgD)
 
             "mov %%al, (%%rdi);"
 
+            "s_contrasteCuadrado_fin: "
+
+            "dec %%r8 ;"
+            "dec %%r9 ;"
+
             "inc %%rsi ;"
             "inc %%rdi ;"
             "loop bcontrastecuadrado ;"
 		
         :
         : "m" (imgO),	"m" (imgD)
-        : "%rbx", "%rax", "%rcx", "%rsi", "%rdi", "memory"
+        : "%rbx", "%rax", "%rcx", "%rsi", "%rdi", "%r8", "%r9", "memory"
     );
 #else
     asm volatile(
@@ -149,23 +169,52 @@ void imageprocess::cambiarContrasteFInversa(uchar * imgO, uchar * imgD)
     asm volatile(
         "mov %0, %%rsi ;"
         "mov %1, %%rdi ;"
-        "mov $320*240, %%rcx ;"
+        "mov $240, %%rcx ;"
+        "mov $0, %%r9;"
         "bcontrasteinversa: ;"
 
-            "mov (%%rsi), %%al;"
+            "cmp $0, %%r9 ;"
+            "je s_bool_1;"
+            "cmp $0, %%r9 ;"
+            "jne s_bool_0;"
 
-            "mov $255, %%bl;"
-            "sub %%al, %%bl;"
+            "s_bool_0: "
+                "mov $0, %%r9 ;"
+                "jmp s_bool_fin ;"
+            "s_bool_1: "
+                "mov $1, %%r9 ;"
+            "s_bool_fin: ;"
 
-            "mov %%bl, (%%rdi);"
+            "mov $320, %%r8 ;"
+            "bcontrasteinversa_2: "
 
-            "inc %%rsi ;"
-            "inc %%rdi ;"
-            "loop bcontrasteinversa ;"
+                "cmp $0, %%r9;"
+                "je s_fin_contraste ;"
+
+                "mov (%%rsi), %%al;"
+
+                "mov $255, %%bl;"
+                "sub %%al, %%bl;"
+
+                "mov %%bl, (%%rdi);"
+
+                "s_fin_contraste: "
+
+                "inc %%rsi ;"
+                "inc %%rdi ;"
+
+
+            "dec %%r8;"
+            "cmp $0, %%r8;"
+            "jg bcontrasteinversa_2 ;"
+
+        "dec %%rcx;"
+        "cmp $0, %%rcx;"
+        "jg bcontrasteinversa ;"
 		
         :
         : "m" (imgO),	"m" (imgD)
-        : "%rbx", "%rax", "%rcx", "%rsi", "%rdi", "memory"
+        : "%rbx", "%rax", "%rcx", "%rdx", "%r8", "%r9", "%rsi", "%rdi", "memory"
     );
 
 #else
@@ -194,25 +243,54 @@ void imageprocess::cambiarEscalaGrises(uchar * imgO, uchar * imgD, uchar minO, u
         "mov %5, %%r9b ;"
 
         "mov %%bl, %%r10b;"
-        "sub %%r8b, %%r10b;"          // rangoO = maxO - minO
+        "sub %%r8b, %%r10b;"                /// rangoO = maxO - minO
 
         "mov %%r9b, %%r11b;"
-        "sub %%dl, %%r11b;"         // rangoD = maxD - minD
+        "sub %%dl, %%r11b;"                 /// rangoD = maxD - minD
 
+        "mov $0, %%r9;"
         "mov $320*240, %%rcx ;"
         "bescalagrises: ;"
 
-            "mov (%%rsi), %%al;"
+            "mov %%rcx, %%rax;"
+            "mov $2, %%ebx;"
+            "xor %%rdx, %%rdx;"
+            "div %%ebx;"
+            "cmp $0, %%rdx;"
+            "je s_cambiarEscalaGrises_NoAplicar ;"
 
-            "sub %%r8b, %%al;"     // g - minO
+                "mov (%%rsi), %%al;"
 
-            "mul %%r11b;"            // (g-minO) * rangoD
+                "sub %%r8b, %%al;"              /// g - minO
 
-            "div %%r10b;"            // ((g-minO)*rangoD) / rangoO
+                "mul %%r11b;"                   /// (g-minO) * rangoD
 
-            "add %%dl, %%al;"     // (((g-minO)*rangoD)/rangoO) + minD
+                "xor %%rdx, %%rdx;"
+                "div %%r10b;"                   /// ((g-minO)*rangoD) / rangoO
 
-            "mov %%al, (%%rdi);"
+                "add %%dl, %%al;"               /// (((g-minO)*rangoD)/rangoO) + minD
+
+                "mov %%al, (%%rdi);"
+
+                "jmp s_cambiarEscalaGrises_fin ;"
+
+            "s_cambiarEscalaGrises_NoAplicar: "
+
+                "cmp $0, %%r9 ;"
+                "je s_escala_bool_1;"
+                "cmp $0, %%r9 ;"
+                "jne s_escala_bool_0;"
+
+                "s_escala_bool_0: "
+                    "mov $0, %%r9 ;"
+                    "movb $255, (%%rdi) ;;"
+                    "jmp s_escala_bool_fin ;"
+                "s_escala_bool_1: "
+                    "mov $1, %%r9 ;"
+                    "movb $0, (%%rdi) ;"
+                "s_escala_bool_fin: ;"
+
+            "s_cambiarEscalaGrises_fin: "
 
             "inc %%rsi ;"
             "inc %%rdi ;"
@@ -220,7 +298,7 @@ void imageprocess::cambiarEscalaGrises(uchar * imgO, uchar * imgD, uchar minO, u
 		
         :
         : "m" (imgO), "m" (imgD), "m" (minO), "m" (maxO), "m" (minD), "m" (maxD)
-        : "%rax", "%rbx", "%rcx", "%rdx", "%r8", "%r9", "%r10", "%r11", "%r12", "%rsi", "%rdi", "memory"
+        : "%rax", "%rbx", "%rcx", "%rdx", "%r8", "%r9", "%r10", "%r11", "%r12", "%r13", "%r14", "%rsi", "%rdi", "memory"
     );
 #else
     asm volatile(
@@ -385,40 +463,40 @@ void imageprocess::ecualizarHistograma(int * histoOrig, uchar * tablaLUT)
     acumHisto = new int[256];
 
     asm volatile(
-        "mov %0, %%rsi;"                            /// dirHOrig
-        "mov %2, %%rdi;"                            /// dirHAcum
-
-        "mov $0, %%r9;"                             /// acum
-
-        "mov $0, %%rcx;"
-        "becualizar_1: ;"
-                "mov (%%rsi, %%rcx, 4), %%eax;"     /// eax = [dirHorig + (n*4)]
-                "add %%eax, %%r9d;"                 /// acum += [dirHorig+(n+4)]
-
-                "mov %%r9d, (%%rdi, %%rcx, 4);"     /// [dirHAcum+(n*4)] = acum
-        "inc %%rcx;"
-        "cmp $256, %%rcx;"
-        "jl becualizar_1;"
-
-        "mov %1, %%r10;"                            /// dirLut = tablaLut
-
-        "mov $0, %%rcx;"
-        "becualizar_2: ;"
-                "mov (%%rdi, %%rcx, 4), %%eax;"     /// eax = [dirHAcum + (n*4)]
-                "mov $256, %%ebx;"                  /// ebx = 256
-                "mul %%ebx;"                        /// eax = [dirHAcum + (n*4)] * 256
-
-                "mov $320*240, %%ebx;"              /// ebx = 320*240
-
-                "xor %%rdx, %%rdx;"
-                "div %%ebx;"                        /// eax = ([dirHAcum + (n*4)] * 256) / 320*240
-
-                "cmp $0, %%eax;"
-                "jle secualizar_1;"
-                "dec %%eax;"
-                "secualizar_1: ;"
-
-                "mov %%al, (%%r10, %%rcx);"         /// [dirLut + n] = g
+        "mov %0, %%rsi;"                                        /// dirHOrig
+        "mov %2, %%rdi;"                                        /// dirHAcum
+                                                                
+        "mov $0, %%r9;"                                         /// acum
+                                                                
+        "mov $0, %%rcx;"                                        
+        "becualizar_1: ;"                                       
+                "mov (%%rsi, %%rcx, 4), %%eax;"                 /// eax = [dirHorig + (n*4)]
+                "add %%eax, %%r9d;"                             /// acum += [dirHorig+(n+4)]
+                                                                
+                "mov %%r9d, (%%rdi, %%rcx, 4);"                 /// [dirHAcum+(n*4)] = acum
+        "inc %%rcx;"                                            
+        "cmp $256, %%rcx;"                                      
+        "jl becualizar_1;"                                      
+                                                                
+        "mov %1, %%r10;"                                        /// dirLut = tablaLut
+                                                                
+        "mov $0, %%rcx;"                                        
+        "becualizar_2: ;"                                       
+                "mov (%%rdi, %%rcx, 4), %%eax;"                 /// eax = [dirHAcum + (n*4)]
+                "mov $256, %%ebx;"                              /// ebx = 256
+                "mul %%ebx;"                                    /// eax = [dirHAcum + (n*4)] * 256
+                                                                
+                "mov $320*240, %%ebx;"                          /// ebx = 320*240
+                                                                
+                "xor %%rdx, %%rdx;"                             
+                "div %%ebx;"                                    /// eax = ([dirHAcum + (n*4)] * 256) / 320*240
+                                                                
+                "cmp $0, %%eax;"                                
+                "jle secualizar_1;"                             
+                "dec %%eax;"                                    
+                "secualizar_1: ;"                               
+                                                                
+                "mov %%al, (%%r10, %%rcx);"                     /// [dirLut + n] = g
 
         "inc %%rcx;"
         "cmp $256, %%rcx;"
@@ -437,18 +515,18 @@ void imageprocess::ecualizarHistograma(int * histoOrig, uchar * tablaLUT)
 void imageprocess::aplicarTablaLUT(uchar * imgO, uchar * tablaLUT, uchar * imgD)
 {
     asm volatile(
-        "mov %0, %%rsi;"                        /// dirOrig
-        "mov %1, %%r8;"                         /// dirLut
-        "mov %2, %%rdi;"                        /// dirDest
-
-        "mov $320*240, %%rcx ;"
-        "baplicartablalut: ;"
-
-                "xor %%rax, %%rax;"
-                "mov (%%rsi), %%al;"            /// al = [dirOrig]
-                "mov (%%r8, %%rax), %%al;"      /// al = [dirLut + dirOrig]
-
-                "mov %%al, (%%rdi);"            /// [rdi] = gDest
+        "mov %0, %%rsi;"                                        /// dirOrig
+        "mov %1, %%r8;"                                         /// dirLut
+        "mov %2, %%rdi;"                                        /// dirDest
+                                                                
+        "mov $320*240, %%rcx ;"                                 
+        "baplicartablalut: ;"                                   
+                                                                
+                "xor %%rax, %%rax;"                             
+                "mov (%%rsi), %%al;"                            /// al = [dirOrig]
+                "mov (%%r8, %%rax), %%al;"                      /// al = [dirLut + dirOrig]
+                                                                
+                "mov %%al, (%%rdi);"                            /// [rdi] = gDest
 
                 "inc %%rsi ;"
                 "inc %%rdi ;"
